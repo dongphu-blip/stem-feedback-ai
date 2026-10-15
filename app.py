@@ -170,7 +170,10 @@ else:
     if not os.path.exists(FEEDBACK_DATA_FILE):
         st.warning("Chưa có dữ liệu phản hồi nào trong hệ thống.")
     else:
-        df = pd.read_csv(FEEDBACK_DATA_FILE, encoding='utf-8-sig')
+        try:
+            df = pd.read_csv(FEEDBACK_DATA_FILE, encoding='utf-8-sig', on_bad_lines='skip')
+        except Exception:
+            df = pd.read_csv(FEEDBACK_DATA_FILE, encoding='utf-8', errors='ignore', on_bad_lines='skip')
         
         # Đồng bộ cột Grade nếu các bản ghi cũ chưa có
         if "Grade" not in df.columns:
