@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Tùy chỉnh CSS giao diện hiện đại, chuyên nghiệp
+# Tùy chỉnh CSS giao diện
 st.markdown("""
     <style>
     .main-header {
@@ -24,13 +24,6 @@ st.markdown("""
         border-radius: 12px;
         color: white;
         margin-bottom: 24px;
-    }
-    .metric-card {
-        background-color: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 16px;
-        text-align: center;
     }
     .stButton>button {
         border-radius: 8px;
@@ -42,7 +35,7 @@ st.markdown("""
 FEEDBACK_DATA_FILE = "student_feedbacks.csv"
 TRAIN_DATA_FILE = "feedback_dataset.csv"
 
-# Danh mục khối và lớp học chuẩn của trường
+# Danh mục khối và lớp học theo đúng thực tế
 CLASSES_BY_GRADE = {
     "Khối 10": [f"10TN{i}" for i in range(1, 6)] + [f"10XH{i}" for i in range(1, 6)],
     "Khối 11": [f"11TN{i}" for i in range(1, 5)] + [f"11XH{i}" for i in range(1, 8)],
@@ -93,4 +86,167 @@ def train_sentiment_model():
         df_init.to_csv(TRAIN_DATA_FILE, index=False, encoding="utf-8-sig")
 
     try:
-        df_train = pd.read_csv(TRA
+        df_train = pd.read_csv(TRAIN_DATA_FILE, encoding='utf-8-sig')
+    except Exception:
+        df_train = pd.read_csv(TRAIN_DATA_FILE, encoding='utf-8', errors='ignore')
+
+    df_train['clean_text'] = df_train['text'].apply(vietnamese_preprocessing)
+    
+    model_pipeline = Pipeline([
+        ('tfidf', TfidfVectorizer(ngram_range=(1, 2))),
+        ('classifier', LinearSVC(random_state=42))
+    ])
+    model_pipeline.fit(df_train['clean_text'], df_train['sentiment'])
+    return model_pipeline
+
+model = train_sentiment_model()
+
+# 4. Lưu phản hồi
+def save_feedback(grade, classroom, subject, text, sentiment):
+    new_entry = {
+        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Grade": grade,
+        "Class": classroom,
+        "Subject": subject,
+        "Feedback": text,
+        "Sentiment": sentiment
+    }
+    df_new = pd.DataFrame([new_entry])
+    if not os.path.exists(FEEDBACK_DATA_FILE):
+        df_new.to_csv(FEEDBACK_DATA_FILE, index=False, encoding="utf-8-sig")
+    else:
+        df_new.to_csv(FEEDBACK_DATA_FILE, mode='a', header=False, index=False, encoding="utf-8-sig")
+
+# Banner tiêu đề trang
+st.markdown("""
+    <div class="main-header">
+        <h1 style="margin:0; font-size: 28px;">🎓 Hệ Thống AI Phân Tích Cảm Xúc Phản Hồi Học Đường</h1>
+        <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 14px;">
+            Dự Án Nghiên Cứu Ứng Dụng Xử Lý Ngôn Ngữ Tự Nhiên & Học Máy Vào Giáo Dục THPT | Năm học 2026-2027
+        </p>
+    </div>
+""", unsafe_allow_html=True)
+
+menu = st.sidebar.radio("📌 Điều hướng hệ thống:", [
+    "📝 Cổng Gửi Ý Kiến Ẩn Danh (Dành Cho Học Sinh)", 
+    "📊 Bảng Điều Khiển & Phân Tích (Dành Cho Giáo Viên)"
+])
+
+# TAB 1: CỔNG HỌC SINH
+if menu == "📝 Cổng Gửi Ý Kiến Ẩn Danh (Dành Cho Học Sinh)":
+    st.markdown("### 💌 Hộp thư đóng góp ý kiến sau tiết học")
+    st.info("🔒 **Bảo mật tuyệt đối**: Danh tính học sinh không được lưu trữ. Mọi phản hồi chân thành của bạn sẽ giúp thầy cô lắng nghe, thấu hiểu và cải tiến phương pháp dạy học hiệu quả hơn!")
+    
+    with st.container():
+        col_grade, col_class, col_sub = st.columns(3)
+        with col_grade:
+            selected_grade = st.selectbox("1. Chọn Khối:", list(CLASSES_BY_GRADE.keys()))
+        with col_class:
+            selected_class = st.selectbox("2. Chọn Lớp:", CLASSES_BY_GRADE[selected_grade])
+        with col_sub:
+            selected_subject = st.selectbox("3. Chọn Môn học / Hoạt động:", SUBJECTS_LIST)
+            
+        feedback_text = st.text_area(
+            "4. Chia sẻ cảm nghĩ, khó khăn hoặc đề xuất của bạn về tiết học hôm nay:",
+            placeholder="Ví dụ: Tiết học hôm nay thầy giảng rất dễ hiểu / Phần bài tập nhóm hơi nhanh em chưa kịp làm quen...",
+            height=140
+        )
+        
+        submit_btn = st.button("🚀 Gửi Phản Hồi Ngay", type="primary", use_container_width=True)
+        
+        if submit_btn:
+            if not feedback_text.strip():
+                st.warning("⚠️ Vui lòng nhập vài dòng cảm nghĩ trước khi nhấn gửi.")
+            else:
+                clean_input = vietnamese_preprocessing(feedback_text)
+                prediction = model.predict([clean_input])[0]
+                save_feedback(selected_grade, selected_class, selected_subject, feedback_text, prediction)
+                st.success("🎉 Cảm ơn bạn! Ý kiến đóng góp ẩn danh đã được ghi nhận vào hệ thống thành công.")
+
+# TAB 2: DASHBOARD CHO GIÁO VIÊN
+else:
+    st.markdown("### 📈 Báo Cáo & Phân Tích Dữ Liệu Cảm Xúc Học Sinh")
+    
+    if not os.path.exists(FEEDBACK_DATA_FILE):
+        st.warning("Chưa có dữ liệu phản hồi nào trong hệ thống.")
+    else:
+        df = pd.read_csv(FEEDBACK_DATA_FILE, encoding='utf-8-sig')
+        
+        # Đồng bộ cột Grade nếu các bản ghi cũ chưa có
+        if "Grade" not in df.columns:
+            df["Grade"] = df["Class"].apply(lambda x: f"Khối {str(x)[:2]}" if str(x)[:2].isdigit() else "Khối 10")
+            
+        # Bộ lọc tương tác
+        st.markdown("##### 🔍 Bộ lọc dữ liệu:")
+        f_col1, f_col2, f_col3 = st.columns(3)
+        with f_col1:
+            all_grades = ["Tất cả"] + sorted(list(df["Grade"].dropna().unique()))
+            filter_grade = st.selectbox("Lọc theo Khối:", all_grades)
+        with f_col2:
+            if filter_grade != "Tất cả":
+                avail_classes = ["Tất cả"] + sorted(list(df[df["Grade"] == filter_grade]["Class"].dropna().unique()))
+            else:
+                avail_classes = ["Tất cả"] + sorted(list(df["Class"].dropna().unique()))
+            filter_class = st.selectbox("Lọc theo Lớp:", avail_classes)
+        with f_col3:
+            all_subjects = ["Tất cả"] + sorted(list(df["Subject"].dropna().unique()))
+            filter_sub = st.selectbox("Lọc theo Môn học:", all_subjects)
+            
+        # Áp dụng bộ lọc
+        filtered_df = df.copy()
+        if filter_grade != "Tất cả":
+            filtered_df = filtered_df[filtered_df["Grade"] == filter_grade]
+        if filter_class != "Tất cả":
+            filtered_df = filtered_df[filtered_df["Class"] == filter_class]
+        if filter_sub != "Tất cả":
+            filtered_df = filtered_df[filtered_df["Subject"] == filter_sub]
+            
+        # Thống kê nhanh
+        total = len(filtered_df)
+        pos = len(filtered_df[filtered_df["Sentiment"] == "positive"])
+        neu = len(filtered_df[filtered_df["Sentiment"] == "neutral"])
+        neg = len(filtered_df[filtered_df["Sentiment"] == "negative"])
+        
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Tổng lượt phản hồi", total)
+        c2.metric("😊 Tích cực (Positive)", f"{pos} ({pos/total*100:.1f}%)" if total else "0")
+        c3.metric("😐 Trung tính (Neutral)", f"{neu} ({neu/total*100:.1f}%)" if total else "0")
+        c4.metric("🚨 Cần hỗ trợ (Negative)", f"{neg} ({neg/total*100:.1f}%)" if total else "0")
+        
+        st.markdown("---")
+        
+        # Biểu đồ tròn
+        chart_col1, chart_col2 = st.columns(2)
+        with chart_col1:
+            sentiment_map = {"positive": "Tích cực", "neutral": "Trung tính", "negative": "Cần hỗ trợ"}
+            df_chart = filtered_df["Sentiment"].map(sentiment_map).value_counts().reset_index()
+            df_chart.columns = ["Phân loại", "Số lượng"]
+            fig_pie = px.pie(
+                df_chart, names="Phân loại", values="Số lượng", 
+                title="Tỷ lệ phân bố cảm xúc",
+                color="Phân loại",
+                color_discrete_map={"Tích cực": "#10B981", "Trung tính": "#F59E0B", "Cần hỗ trợ": "#EF4444"},
+                hole=0.4
+            )
+            st.plotly_chart(fig_pie, use_container_width=True)
+            
+        with chart_col2:
+            st.markdown("##### 🚨 Phản hồi cần giáo viên lưu ý / hỗ trợ kịp thời:")
+            negatives = filtered_df[filtered_df["Sentiment"] == "negative"][["Timestamp", "Class", "Subject", "Feedback"]]
+            if len(negatives) > 0:
+                st.dataframe(negatives, use_container_width=True, hide_index=True)
+            else:
+                st.success("Tuyệt vời! Không ghi nhận phản ánh khó khăn nào trong danh mục đã chọn.")
+
+        st.markdown("---")
+        st.markdown("##### 📋 Toàn bộ phản hồi ghi nhận:")
+        st.dataframe(filtered_df, use_container_width=True, hide_index=True)
+        
+        # Tải file báo cáo CSV/Excel
+        export_csv = filtered_df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
+        st.download_button(
+            "📥 Tải Báo Cáo Phân Tích (.CSV)", 
+            data=export_csv, 
+            file_name=f"Bao_Cao_Cam_Xuc_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", 
+            mime="text/csv"
+        )
