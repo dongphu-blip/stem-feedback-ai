@@ -123,7 +123,7 @@ def save_feedback(grade, classroom, subject, text, sentiment):
 # Banner tiêu đề trang
 st.markdown("""
     <div class="main-header">
-        <h1 style="margin:0; font-size: 28px;">🎓 Hệ Thống AI Phân Tích Cảm Xúc Phản Hồi Học Đường</h1>
+        <h1 style="margin:0; font-size: 28px;">🎓 Hệ Thống AI Phân Tích Cảm Xúc Phản Hồi Học Đường của học sinh Trường THPT Đồng Phú</h1>
         <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 14px;">
             Dự Án Nghiên Cứu Ứng Dụng Xử Lý Ngôn Ngữ Tự Nhiên & Học Máy Vào Giáo Dục THPT | Năm học 2026-2027
         </p>
