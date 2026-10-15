@@ -7,38 +7,112 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
 import plotly.express as px
+import plotly.graph_objects as go
 
-# 1. Cấu hình giao diện trang
+# 1. Cấu hình giao diện Streamlit
 st.set_page_config(
-    page_title="AI Classroom Sentiment Analyzer",
+    page_title="Hệ Thống AI Cảm Xúc Học Đường | THPT Đồng Phú",
     page_icon="🎓",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Tùy chỉnh CSS giao diện
+# 2. CSS Tùy biến giao diện (Giao diện chuẩn hiện đại, thẩm mỹ cao)
 st.markdown("""
     <style>
-    .main-header {
-        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
-        padding: 24px;
-        border-radius: 12px;
-        color: white;
-        margin-bottom: 24px;
+    /* Nhập font Google Inter */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
-    .stButton>button {
-        border-radius: 8px;
+    
+    /* Banner Header */
+    .hero-banner {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
+        border-radius: 16px;
+        padding: 30px;
+        color: white;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .hero-text h1 {
+        font-size: 26px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: #ffffff;
+    }
+    
+    .hero-text p {
+        font-size: 15px;
+        margin: 0;
+        opacity: 0.92;
+        line-height: 1.5;
+    }
+
+    /* Thẻ thống kê (Metric Cards) */
+    .metric-container {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+    
+    .card {
+        padding: 18px;
+        border-radius: 14px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        text-align: center;
+    }
+    
+    .card-total { border-top: 4px solid #3b82f6; }
+    .card-pos { border-top: 4px solid #10b981; }
+    .card-neu { border-top: 4px solid #f59e0b; }
+    .card-neg { border-top: 4px solid #ef4444; }
+    
+    .card-num {
+        font-size: 26px;
+        font-weight: 700;
+        margin: 5px 0;
+    }
+    
+    .card-label {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    /* Nút bấm */
+    div.stButton > button:first-child {
+        background: linear-gradient(90deg, #2563eb, #1d4ed8);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 24px;
         font-weight: 600;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+    
+    div.stButton > button:first-child:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
     }
     </style>
 """, unsafe_allow_html=True)
 
 FEEDBACK_DATA_FILE = "student_feedbacks.csv"
 TRAIN_DATA_FILE = "feedback_dataset.csv"
-
-# MẬT KHẨU TRUY CẬP DÀNH CHO GIÁO VIÊN (Bạn có thể đổi mật khẩu tại đây)
 TEACHER_PASSWORD = "thptdongphu2026"
 
-# Danh mục khối và lớp học theo đúng thực tế
+# Danh mục khối và lớp học chuẩn
 CLASSES_BY_GRADE = {
     "Khối 10": [f"10TN{i}" for i in range(1, 6)] + [f"10XH{i}" for i in range(1, 6)],
     "Khối 11": [f"11TN{i}" for i in range(1, 5)] + [f"11XH{i}" for i in range(1, 8)],
@@ -51,12 +125,12 @@ SUBJECTS_LIST = [
     "Địa lý", "GDCD / GDKT&PL", "Hoạt động trải nghiệm / Hướng nghiệp / SHL"
 ]
 
-# 2. Tiền xử lý văn bản tiếng Việt
+# 3. Tiền xử lý văn bản tiếng Việt
 def vietnamese_preprocessing(text):
     text = str(text).lower().strip()
     return word_tokenize(text, format="text")
 
-# 3. Huấn luyện mô hình AI
+# 4. Huấn luyện mô hình AI
 @st.cache_resource
 def train_sentiment_model():
     if not os.path.exists(TRAIN_DATA_FILE):
@@ -85,8 +159,7 @@ def train_sentiment_model():
                 "negative", "negative", "negative", "negative", "negative", "negative"
             ]
         }
-        df_init = pd.DataFrame(sample_dataset)
-        df_init.to_csv(TRAIN_DATA_FILE, index=False, encoding="utf-8-sig")
+        pd.DataFrame(sample_dataset).to_csv(TRAIN_DATA_FILE, index=False, encoding="utf-8-sig")
 
     try:
         df_train = pd.read_csv(TRAIN_DATA_FILE, encoding='utf-8-sig')
@@ -104,7 +177,7 @@ def train_sentiment_model():
 
 model = train_sentiment_model()
 
-# 4. Lưu phản hồi
+# 5. Lưu phản hồi
 def save_feedback(grade, classroom, subject, text, sentiment):
     new_entry = {
         "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -120,84 +193,94 @@ def save_feedback(grade, classroom, subject, text, sentiment):
     else:
         df_new.to_csv(FEEDBACK_DATA_FILE, mode='a', header=False, index=False, encoding="utf-8-sig")
 
-# Banner tiêu đề trang
+# Banner đẹp phần đầu trang
 st.markdown("""
-    <div class="main-header">
-        <h1 style="margin:0; font-size: 28px;">🎓 Hệ Thống AI Phân Tích Cảm Xúc Phản Hồi Học Đường của học sinh Trường THPT Đồng Phú</h1>
-        <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 14px;">
-            Dự Án Nghiên Cứu Ứng Dụng Xử Lý Ngôn Ngữ Tự Nhiên & Học Máy Vào Giáo Dục THPT | Năm học 2026-2027
-        </p>
+    <div class="hero-banner">
+        <div class="hero-text">
+            <h1>🎓 HỆ THỐNG AI LẮNG NGHE & PHÂN TÍCH CẢM XÚC HỌC ĐƯỜNG</h1>
+            <p>Dự Án Nghiên Cứu STEM 2026-2027 • Ứng Dụng Học Máy & Xử Lý Ngôn Ngữ Tự Nhiên (NLP)<br>
+            <i>Đồng hành cùng học sinh xây dựng môi trường học đường hạnh phúc, thấu hiểu và sẻ chia.</i></p>
+        </div>
     </div>
 """, unsafe_allow_html=True)
 
-menu = st.sidebar.radio("📌 Điều hướng hệ thống:", [
-    "📝 Cổng Gửi Ý Kiến Ẩn Danh (Dành Cho Học Sinh)", 
-    "📊 Bảng Điều Khiển & Phân Tích (Dành Cho Giáo Viên)"
+# Menu bên trái (Sidebar)
+st.sidebar.image("https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=60", caption="Smart School AI Assistant", use_container_width=True)
+menu = st.sidebar.radio("📌 Điều hướng chức năng:", [
+    "📝 Cổng Ý Kiến Ẩn Danh (Học Sinh)", 
+    "📊 Bảng Điều Khiển (Giáo Viên / BGH)"
 ])
 
 # ================= TAB 1: CỔNG HỌC SINH =================
-if menu == "📝 Cổng Gửi Ý Kiến Ẩn Danh (Dành Cho Học Sinh)":
-    st.markdown("### 💌 Hộp thư đóng góp ý kiến sau tiết học")
-    st.info("🔒 **Bảo mật tuyệt đối**: Danh tính học sinh không được lưu trữ. Mọi phản hồi chân thành của bạn sẽ giúp thầy cô lắng nghe, thấu hiểu và cải tiến phương pháp dạy học hiệu quả hơn!")
+if menu == "📝 Cổng Ý Kiến Ẩn Danh (Học Sinh)":
     
-    with st.container():
-        col_grade, col_class, col_sub = st.columns(3)
-        with col_grade:
-            selected_grade = st.selectbox("1. Chọn Khối:", list(CLASSES_BY_GRADE.keys()))
-        with col_class:
-            selected_class = st.selectbox("2. Chọn Lớp:", CLASSES_BY_GRADE[selected_grade])
-        with col_sub:
-            selected_subject = st.selectbox("3. Chọn Môn học / Hoạt động:", SUBJECTS_LIST)
+    col_left, col_right = st.columns([3, 2])
+    
+    with col_left:
+        st.subheader("💌 Hộp Thư Góp Ý Tiết Học")
+        st.info("💡 **Ghi chú bảo mật**: Bạn hoàn toàn không cần đăng nhập hay để lại họ tên. Hãy thoải mái chia sẻ những gì bạn thực sự cảm nhận được trong tiết học nhé!")
+
+        col_g, col_c = st.columns(2)
+        with col_g:
+            selected_grade = st.selectbox("1. Khối học của bạn:", list(CLASSES_BY_GRADE.keys()))
+        with col_c:
+            selected_class = st.selectbox("2. Lớp học:", CLASSES_BY_GRADE[selected_grade])
             
+        selected_subject = st.selectbox("3. Môn học / Hoạt động trải nghiệm:", SUBJECTS_LIST)
+        
         feedback_text = st.text_area(
-            "4. Chia sẻ cảm nghĩ, khó khăn hoặc đề xuất của bạn về tiết học hôm nay:",
-            placeholder="Ví dụ: Tiết học hôm nay thầy giảng rất dễ hiểu / Phần bài tập nhóm hơi nhanh em chưa kịp làm quen...",
-            height=140
+            "4. Cảm nhận, thắc mắc hoặc khó khăn của bạn hôm nay:",
+            placeholder="Chia sẻ với thầy cô: bài học có nhanh không, phần nào em chưa hiểu, bài tập có quá sức không...",
+            height=130
         )
         
-        submit_btn = st.button("🚀 Gửi Phản Hồi Ngay", type="primary", use_container_width=True)
-        
-        if submit_btn:
+        if st.button("🚀 Gửi Phản Hồi Ngay", use_container_width=True):
             if not feedback_text.strip():
-                st.warning("⚠️ Vui lòng nhập vài dòng cảm nghĩ trước khi nhấn gửi.")
+                st.warning("Vui lòng viết vài dòng cảm nhận trước khi gửi nhé!")
             else:
                 clean_input = vietnamese_preprocessing(feedback_text)
                 prediction = model.predict([clean_input])[0]
                 save_feedback(selected_grade, selected_class, selected_subject, feedback_text, prediction)
-                st.success("🎉 Cảm ơn bạn! Ý kiến đóng góp ẩn danh đã được ghi nhận vào hệ thống thành công.")
+                st.success("✅ Phản hồi của bạn đã được gửi thành công đến thầy cô! Cảm ơn bạn đã đóng góp xây dựng tiết học.")
+                st.balloons()
 
-# ================= TAB 2: DASHBOARD CHO GIÁO VIÊN (CÓ MẬT KHẨU) =================
+    with col_right:
+        st.markdown("<br>", unsafe_allow_html=True)
+        # Hình ảnh minh họa học tập trực quan
+        st.image("https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&auto=format&fit=crop&q=80", 
+                 caption="Mỗi ý kiến đóng góp là viên gạch xây dựng lớp học hạnh phúc", 
+                 use_container_width=True)
+
+# ================= TAB 2: DASHBOARD CHO GIÁO VIÊN =================
 else:
-    st.markdown("### 📈 Báo Cáo & Phân Tích Dữ Liệu Cảm Xúc Học Sinh")
+    st.subheader("📊 Báo Cáo Cảm Xúc & Phản Hồi Học Sinh Theo Thời Gian Thực")
     
-    # Quản lý trạng thái đăng nhập giáo viên trong phiên làm việc
     if "teacher_logged_in" not in st.session_state:
         st.session_state.teacher_logged_in = False
 
     if not st.session_state.teacher_logged_in:
-        st.warning("🔒 Khu vực này dành riêng cho Ban Giám Hiệu và Thầy Cô giáo. Vui lòng nhập mã bảo mật để tiếp tục.")
+        st.warning("🔒 Vui lòng nhập mật khẩu xác thực dành cho Ban Giám Hiệu & Giáo Viên.")
         pwd_col1, pwd_col2 = st.columns([2, 1])
         with pwd_col1:
-            entered_password = st.text_input("Nhập mã bảo vệ:", type="password", placeholder="Nhập mật khẩu giáo viên...")
+            entered_password = st.text_input("Mật khẩu bảo vệ:", type="password", placeholder="Nhập mã xác thực...")
         with pwd_col2:
             st.write("")
             st.write("")
-            if st.button("Mở Khóa Bảng Điều Khiển", type="primary"):
+            if st.button("Đăng Nhập"):
                 if entered_password == TEACHER_PASSWORD:
                     st.session_state.teacher_logged_in = True
                     st.rerun()
                 else:
-                    st.error("❌ Mật khẩu không chính xác. Vui lòng thử lại!")
+                    st.error("Mật khẩu không chính xác!")
     else:
-        # Nút đăng xuất nhanh
-        col_title, col_logout = st.columns([5, 1])
-        with col_logout:
+        top_c1, top_c2 = st.columns([5, 1])
+        with top_c2:
             if st.button("🚪 Đăng Xuất"):
                 st.session_state.teacher_logged_in = False
                 st.rerun()
 
         if not os.path.exists(FEEDBACK_DATA_FILE):
-            st.warning("Chưa có dữ liệu phản hồi nào trong hệ thống.")
+            st.info("Hệ thống chưa ghi nhận lượt phản hồi nào.")
         else:
             try:
                 df = pd.read_csv(FEEDBACK_DATA_FILE, encoding='utf-8-sig', on_bad_lines='skip')
@@ -207,21 +290,21 @@ else:
             if "Grade" not in df.columns:
                 df["Grade"] = df["Class"].apply(lambda x: f"Khối {str(x)[:2]}" if str(x)[:2].isdigit() else "Khối 10")
                 
-            # Bộ lọc tương tác
-            st.markdown("##### 🔍 Bộ lọc dữ liệu:")
+            # Thanh bộ lọc
+            st.markdown("#### 🔍 Bộ lọc thông minh:")
             f_col1, f_col2, f_col3 = st.columns(3)
             with f_col1:
                 all_grades = ["Tất cả"] + sorted(list(df["Grade"].dropna().unique()))
-                filter_grade = st.selectbox("Lọc theo Khối:", all_grades)
+                filter_grade = st.selectbox("Khối lớp:", all_grades)
             with f_col2:
                 if filter_grade != "Tất cả":
                     avail_classes = ["Tất cả"] + sorted(list(df[df["Grade"] == filter_grade]["Class"].dropna().unique()))
                 else:
                     avail_classes = ["Tất cả"] + sorted(list(df["Class"].dropna().unique()))
-                filter_class = st.selectbox("Lọc theo Lớp:", avail_classes)
+                filter_class = st.selectbox("Lớp học:", avail_classes)
             with f_col3:
                 all_subjects = ["Tất cả"] + sorted(list(df["Subject"].dropna().unique()))
-                filter_sub = st.selectbox("Lọc theo Môn học:", all_subjects)
+                filter_sub = st.selectbox("Môn học:", all_subjects)
                 
             filtered_df = df.copy()
             if filter_grade != "Tất cả":
@@ -236,43 +319,64 @@ else:
             neu = len(filtered_df[filtered_df["Sentiment"] == "neutral"])
             neg = len(filtered_df[filtered_df["Sentiment"] == "negative"])
             
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Tổng lượt phản hồi", total)
-            c2.metric("😊 Tích cực (Positive)", f"{pos} ({pos/total*100:.1f}%)" if total else "0")
-            c3.metric("😐 Trung tính (Neutral)", f"{neu} ({neu/total*100:.1f}%)" if total else "0")
-            c4.metric("🚨 Cần hỗ trợ (Negative)", f"{neg} ({neg/total*100:.1f}%)" if total else "0")
+            pos_pct = f"{(pos/total*100):.1f}%" if total else "0%"
+            neu_pct = f"{(neu/total*100):.1f}%" if total else "0%"
+            neg_pct = f"{(neg/total*100):.1f}%" if total else "0%"
             
-            st.markdown("---")
+            # Thẻ số liệu phong cách mới
+            st.markdown(f"""
+                <div class="metric-container">
+                    <div class="card card-total">
+                        <div class="card-label">TỔNG PHẢN HỒI</div>
+                        <div class="card-num" style="color: #2563eb;">{total}</div>
+                    </div>
+                    <div class="card card-pos">
+                        <div class="card-label">TÍCH CỰC (POSITIVE)</div>
+                        <div class="card-num" style="color: #10b981;">{pos} <span style="font-size:14px;">({pos_pct})</span></div>
+                    </div>
+                    <div class="card card-neu">
+                        <div class="card-label">TRUNG TÍNH (NEUTRAL)</div>
+                        <div class="card-num" style="color: #f59e0b;">{neu} <span style="font-size:14px;">({neu_pct})</span></div>
+                    </div>
+                    <div class="card card-neg">
+                        <div class="card-label">CẦN LƯU Ý (NEGATIVE)</div>
+                        <div class="card-num" style="color: #ef4444;">{neg} <span style="font-size:14px;">({neg_pct})</span></div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
             
+            # Biểu đồ trực quan
             chart_col1, chart_col2 = st.columns(2)
             with chart_col1:
-                sentiment_map = {"positive": "Tích cực", "neutral": "Trung tính", "negative": "Cần hỗ trợ"}
+                sentiment_map = {"positive": "Tích cực", "neutral": "Trung tính", "negative": "Cần lưu ý"}
                 df_chart = filtered_df["Sentiment"].map(sentiment_map).value_counts().reset_index()
                 df_chart.columns = ["Phân loại", "Số lượng"]
-                fig_pie = px.pie(
-                    df_chart, names="Phân loại", values="Số lượng", 
-                    title="Tỷ lệ phân bố cảm xúc",
+                
+                fig_donut = px.pie(
+                    df_chart, names="Phân loại", values="Số lượng",
+                    title="Biểu đồ tỷ lệ phân bố cảm xúc",
+                    hole=0.45,
                     color="Phân loại",
-                    color_discrete_map={"Tích cực": "#10B981", "Trung tính": "#F59E0B", "Cần hỗ trợ": "#EF4444"},
-                    hole=0.4
+                    color_discrete_map={"Tích cực": "#10B981", "Trung tính": "#F59E0B", "Cần lưu ý": "#EF4444"}
                 )
-                st.plotly_chart(fig_pie, use_container_width=True)
+                fig_donut.update_traces(textposition='inside', textinfo='percent+label')
+                st.plotly_chart(fig_donut, use_container_width=True)
                 
             with chart_col2:
-                st.markdown("##### 🚨 Phản hồi cần giáo viên lưu ý / hỗ trợ kịp thời:")
+                st.markdown("##### 🚨 Phản ánh học tập cần hỗ trợ kịp thời:")
                 negatives = filtered_df[filtered_df["Sentiment"] == "negative"][["Timestamp", "Class", "Subject", "Feedback"]]
                 if len(negatives) > 0:
                     st.dataframe(negatives, use_container_width=True, hide_index=True)
                 else:
-                    st.success("Tuyệt vời! Không ghi nhận phản ánh khó khăn nào trong danh mục đã chọn.")
-
+                    st.success("Không có phản hồi tiêu cực nào trong phạm vi được chọn.")
+            
             st.markdown("---")
-            st.markdown("##### 📋 Toàn bộ phản hồi ghi nhận:")
+            st.markdown("##### 📋 Bảng dữ liệu toàn bộ ý kiến:")
             st.dataframe(filtered_df, use_container_width=True, hide_index=True)
             
             export_csv = filtered_df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
             st.download_button(
-                "📥 Tải Báo Cáo Phân Tích (.CSV)", 
+                "📥 Tải Về Toàn Bộ Báo Cáo (.CSV/Excel)", 
                 data=export_csv, 
                 file_name=f"Bao_Cao_Cam_Xuc_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", 
                 mime="text/csv"
