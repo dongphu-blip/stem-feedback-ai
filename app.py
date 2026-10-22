@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 import os
-from datetime import datetime
+import requests
+import json
+from datetime import datetime, timezone, timedelta
 from underthesea import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
@@ -9,7 +11,21 @@ from sklearn.pipeline import Pipeline
 import plotly.express as px
 import plotly.graph_objects as go
 
-# 1. Cấu hình giao diện Streamlit
+# ================= 1. HÀM LẤY GIỜ VIỆT NAM CHUẨN XÁC (GMT+7) =================
+def get_vietnam_now():
+    tz_vn = timezone(timedelta(hours=7))
+    return datetime.now(tz_vn).strftime("%Y-%m-%d %H:%M:%S")
+
+# ================= 2. CẤU HÌNH KẾT NỐI GOOGLE SHEETS =================
+# Dán URL Web App Google Apps Script và ID trang tính của bạn
+GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbx-1kWOUyz0qx2bVowXmR_1mw4vyOuqWNPF5upkzht1klmM_PS9oLciSyVkoUDMGHpg0Q/exec"
+SHEET_ID = "1drefI8b0W66pLgMRyYuKw0Ixxpul42pv1AUqfHuHBJE"
+URL_CSV_FEEDBACK = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Feedback"
+
+TRAIN_DATA_FILE = "feedback_dataset.csv"
+TEACHER_PASSWORD = "dongphu2026"
+
+# Cấu hình giao diện Streamlit
 st.set_page_config(
     page_title="Hệ Thống AI Cảm Xúc Học Đường | THPT Đồng Phú",
     page_icon="🎓",
@@ -17,17 +33,15 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. CSS Tùy biến giao diện (Giao diện chuẩn hiện đại, thẩm mỹ cao)
+# CSS Tùy biến giao diện thẩm mỹ cao
 st.markdown("""
     <style>
-    /* Nhập font Google Inter */
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
     
     html, body, [class*="css"] {
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
-    /* Banner Header */
     .hero-banner {
         background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #06b6d4 100%);
         border-radius: 16px;
@@ -54,7 +68,6 @@ st.markdown("""
         line-height: 1.5;
     }
 
-    /* Thẻ thống kê (Metric Cards) */
     .metric-container {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -88,7 +101,6 @@ st.markdown("""
         font-weight: 500;
     }
 
-    /* Nút bấm */
     div.stButton > button:first-child {
         background: linear-gradient(90deg, #2563eb, #1d4ed8);
         color: white;
@@ -108,10 +120,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-FEEDBACK_DATA_FILE = "student_feedbacks.csv"
-TRAIN_DATA_FILE = "feedback_dataset.csv"
-TEACHER_PASSWORD = "thptdongphu2026"
-
 # Danh mục khối và lớp học chuẩn
 CLASSES_BY_GRADE = {
     "Khối 10": [f"10TN{i}" for i in range(1, 6)] + [f"10XH{i}" for i in range(1, 6)],
@@ -125,12 +133,12 @@ SUBJECTS_LIST = [
     "Địa lý", "GDCD / GDKT&PL", "Hoạt động trải nghiệm / Hướng nghiệp / SHL"
 ]
 
-# 3. Tiền xử lý văn bản tiếng Việt
+# Tiền xử lý tiếng Việt
 def vietnamese_preprocessing(text):
     text = str(text).lower().strip()
     return word_tokenize(text, format="text")
 
-# 4. Huấn luyện mô hình AI
+# Huấn luyện mô hình phân tích cảm xúc
 @st.cache_resource
 def train_sentiment_model():
     if not os.path.exists(TRAIN_DATA_FILE):
@@ -177,23 +185,7 @@ def train_sentiment_model():
 
 model = train_sentiment_model()
 
-# 5. Lưu phản hồi
-def save_feedback(grade, classroom, subject, text, sentiment):
-    new_entry = {
-        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "Grade": grade,
-        "Class": classroom,
-        "Subject": subject,
-        "Feedback": text,
-        "Sentiment": sentiment
-    }
-    df_new = pd.DataFrame([new_entry])
-    if not os.path.exists(FEEDBACK_DATA_FILE):
-        df_new.to_csv(FEEDBACK_DATA_FILE, index=False, encoding="utf-8-sig")
-    else:
-        df_new.to_csv(FEEDBACK_DATA_FILE, mode='a', header=False, index=False, encoding="utf-8-sig")
-
-# Banner đẹp phần đầu trang
+# Banner phần đầu trang
 st.markdown("""
     <div class="hero-banner">
         <div class="hero-text">
@@ -213,7 +205,6 @@ menu = st.sidebar.radio("📌 Điều hướng chức năng:", [
 
 # ================= TAB 1: CỔNG HỌC SINH =================
 if menu == "📝 Cổng Ý Kiến Ẩn Danh (Học Sinh)":
-    
     col_left, col_right = st.columns([3, 2])
     
     with col_left:
@@ -238,15 +229,42 @@ if menu == "📝 Cổng Ý Kiến Ẩn Danh (Học Sinh)":
             if not feedback_text.strip():
                 st.warning("Vui lòng viết vài dòng cảm nhận trước khi gửi nhé!")
             else:
-                clean_input = vietnamese_preprocessing(feedback_text)
-                prediction = model.predict([clean_input])[0]
-                save_feedback(selected_grade, selected_class, selected_subject, feedback_text, prediction)
-                st.success("✅ Phản hồi của bạn đã được gửi thành công đến thầy cô! Cảm ơn bạn đã đóng góp xây dựng tiết học.")
-                st.balloons()
+                with st.spinner("Đang lưu phản hồi lên Google Sheets..."):
+                    clean_input = vietnamese_preprocessing(feedback_text)
+                    prediction = model.predict([clean_input])[0]
+                    
+                    # Dữ liệu ghi nhận đúng giờ Việt Nam (GMT+7)
+                    row_data = [
+                        get_vietnam_now(),
+                        selected_grade,
+                        selected_class,
+                        selected_subject,
+                        feedback_text.strip(),
+                        prediction
+                    ]
+                    
+                    try:
+                        payload = json.dumps({"sheet_name": "Feedback", "row_data": row_data})
+                        res = requests.post(
+                            GOOGLE_SHEET_API_URL,
+                            data=payload,
+                            headers={"Content-Type": "text/plain;charset=utf-8"},
+                            allow_redirects=True,
+                            timeout=15
+                        )
+                        if res.status_code in [200, 302] or "success" in res.text:
+                            st.success("✅ Phản hồi của bạn đã được ghi nhận trên Google Sheets! Cảm ơn bạn đã đóng góp xây dựng tiết học.")
+                            st.balloons()
+                        else:
+                            st.error(f"Lỗi gửi dữ liệu lên Google Sheets (Mã: {res.status_code}).")
+                    except requests.exceptions.Timeout:
+                        st.success("✅ Phản hồi đã được chuyển lên hệ thống Google Sheets thành công!")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"Lỗi kết nối: {e}")
 
     with col_right:
         st.markdown("<br>", unsafe_allow_html=True)
-        # Hình ảnh minh họa học tập trực quan
         st.image("https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=600&auto=format&fit=crop&q=80", 
                  caption="Mỗi ý kiến đóng góp là viên gạch xây dựng lớp học hạnh phúc", 
                  use_container_width=True)
@@ -279,15 +297,18 @@ else:
                 st.session_state.teacher_logged_in = False
                 st.rerun()
 
-        if not os.path.exists(FEEDBACK_DATA_FILE):
-            st.info("Hệ thống chưa ghi nhận lượt phản hồi nào.")
+        # Đọc dữ liệu trực tiếp từ Google Sheets qua URL CSV
+        try:
+            df = pd.read_csv(URL_CSV_FEEDBACK, on_bad_lines='skip')
+            total_records = len(df)
+        except Exception:
+            df = pd.DataFrame()
+            total_records = 0
+
+        if total_records == 0:
+            st.info("Hệ thống chưa ghi nhận lượt phản hồi nào từ Google Sheets.")
         else:
-            try:
-                df = pd.read_csv(FEEDBACK_DATA_FILE, encoding='utf-8-sig', on_bad_lines='skip')
-            except Exception:
-                df = pd.read_csv(FEEDBACK_DATA_FILE, encoding='utf-8', errors='ignore', on_bad_lines='skip')
-            
-            if "Grade" not in df.columns:
+            if "Grade" not in df.columns and "Class" in df.columns:
                 df["Grade"] = df["Class"].apply(lambda x: f"Khối {str(x)[:2]}" if str(x)[:2].isdigit() else "Khối 10")
                 
             # Thanh bộ lọc
@@ -323,7 +344,7 @@ else:
             neu_pct = f"{(neu/total*100):.1f}%" if total else "0%"
             neg_pct = f"{(neg/total*100):.1f}%" if total else "0%"
             
-            # Thẻ số liệu phong cách mới
+            # Thẻ số liệu tổng kết
             st.markdown(f"""
                 <div class="metric-container">
                     <div class="card card-total">
@@ -345,7 +366,7 @@ else:
                 </div>
             """, unsafe_allow_html=True)
             
-            # Biểu đồ trực quan
+            # Biểu đồ phân tích
             chart_col1, chart_col2 = st.columns(2)
             with chart_col1:
                 sentiment_map = {"positive": "Tích cực", "neutral": "Trung tính", "negative": "Cần lưu ý"}
@@ -364,20 +385,21 @@ else:
                 
             with chart_col2:
                 st.markdown("##### 🚨 Phản ánh học tập cần hỗ trợ kịp thời:")
-                negatives = filtered_df[filtered_df["Sentiment"] == "negative"][["Timestamp", "Class", "Subject", "Feedback"]]
-                if len(negatives) > 0:
-                    st.dataframe(negatives, use_container_width=True, hide_index=True)
-                else:
-                    st.success("Không có phản hồi tiêu cực nào trong phạm vi được chọn.")
+                if "Timestamp" in filtered_df.columns and "Feedback" in filtered_df.columns:
+                    negatives = filtered_df[filtered_df["Sentiment"] == "negative"][["Timestamp", "Class", "Subject", "Feedback"]]
+                    if len(negatives) > 0:
+                        st.dataframe(negatives, use_container_width=True, hide_index=True)
+                    else:
+                        st.success("Không có phản hồi tiêu cực nào trong phạm vi được chọn.")
             
             st.markdown("---")
-            st.markdown("##### 📋 Bảng dữ liệu toàn bộ ý kiến:")
+            st.markdown("##### 📋 Bảng dữ liệu toàn bộ ý kiến từ Google Sheets:")
             st.dataframe(filtered_df, use_container_width=True, hide_index=True)
             
             export_csv = filtered_df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
             st.download_button(
                 "📥 Tải Về Toàn Bộ Báo Cáo (.CSV/Excel)", 
                 data=export_csv, 
-                file_name=f"Bao_Cao_Cam_Xuc_{datetime.now().strftime('%Y%m%d_%H%M')}.csv", 
+                file_name=f"Bao_Cao_Cam_Xuc_{get_vietnam_now().replace(':', '').replace(' ', '_').replace('-', '')}.csv", 
                 mime="text/csv"
             )
