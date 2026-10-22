@@ -18,7 +18,7 @@ def get_vietnam_now():
 
 # ================= 2. CẤU HÌNH KẾT NỐI GOOGLE SHEETS =================
 # Dán URL Web App Google Apps Script và ID trang tính của bạn
-GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzWCj-tmTGuj_4wUyvlYbG111aqPfjToB7oRGRnPkrCmoDfIjN9RL9ZbRPZ3zJk3xQ3O/exec"
+GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycby3P8g_pkFokhSkD0yWmkyiCJH8Dby4eF5R3oosxnO_Jxl0nDdnpn3iMPTAip3y-k-h/exec"
 SHEET_ID = "1drefI8b0W66pLgMRyYuKw0Ixxpul42pv1AUqfHuHBJE"
 URL_CSV_FEEDBACK = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Feedback"
 TRAIN_DATA_FILE = "feedback_dataset.csv"
