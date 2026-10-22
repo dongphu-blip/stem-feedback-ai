@@ -17,10 +17,10 @@ def get_vietnam_now():
     return datetime.now(tz_vn).strftime("%Y-%m-%d %H:%M:%S")
 
 # ================= 2. CẤU HÌNH KẾT NỐI GOOGLE SHEETS =================
-# Dán URL Web App Google Apps Script và ID trang tính của bạn
 GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycby3P8g_pkFokhSkD0yWmkyiCJH8Dby4eF5R3oosxnO_Jxl0nDdnpn3iMPTAip3y-k-h/exec"
 SHEET_ID = "1drefI8b0W66pLgMRyYuKw0Ixxpul42pv1AUqfHuHBJE"
 URL_CSV_FEEDBACK = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Feedback"
+
 TRAIN_DATA_FILE = "feedback_dataset.csv"
 TEACHER_PASSWORD = "dongphu2026"
 
@@ -232,7 +232,6 @@ if menu == "📝 Cổng Ý Kiến Ẩn Danh (Học Sinh)":
                     clean_input = vietnamese_preprocessing(feedback_text)
                     prediction = model.predict([clean_input])[0]
                     
-                    # Dữ liệu ghi nhận đúng giờ Việt Nam (GMT+7)
                     row_data = [
                         get_vietnam_now(),
                         selected_grade,
@@ -299,18 +298,18 @@ else:
         # Đọc dữ liệu trực tiếp từ Google Sheets qua URL CSV
         try:
             df = pd.read_csv(URL_CSV_FEEDBACK, on_bad_lines='skip')
-            total_records = len(df)
         except Exception:
             df = pd.DataFrame()
-            total_records = 0
 
-        if total_records == 0:
-            st.info("Hệ thống chưa ghi nhận lượt phản hồi nào từ Google Sheets.")
+        # Kiểm tra an toàn: Nếu bảng chưa có dữ liệu hoặc thiếu các cột quan trọng
+        required_cols = ["Class", "Sentiment", "Subject"]
+        if df.empty or not all(col in df.columns for col in required_cols):
+            st.info("📌 Hệ thống chưa ghi nhận phản hồi nào hoặc bảng tính `Feedback` đang trống. Hãy quay lại Cổng học sinh để gửi phản hồi đầu tiên nhé!")
         else:
-            if "Grade" not in df.columns and "Class" in df.columns:
+            if "Grade" not in df.columns:
                 df["Grade"] = df["Class"].apply(lambda x: f"Khối {str(x)[:2]}" if str(x)[:2].isdigit() else "Khối 10")
                 
-            # Thanh bộ lọc
+            # Thanh bộ lọc thông minh
             st.markdown("#### 🔍 Bộ lọc thông minh:")
             f_col1, f_col2, f_col3 = st.columns(3)
             with f_col1:
