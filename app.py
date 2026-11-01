@@ -153,13 +153,21 @@ def train_sentiment_model():
             
             # Trung tính (Neutral)
             "Nội dung bài học bình thường không có gì đặc biệt",
-            "Bài học hôm nay vừa sức",
-            "Em ghi chép bài đầy đủ rồi",
-            "Tốc độ giảng dạy bình thường",
-            "Tiết học diễn ra như mọi ngày",
+            "Hôm nay em thấy tiết học bình thường",
+            "Tiết học hôm nay bình thường",
+            "Em thấy buổi học hôm nay bình thường",
+            "Mọi thứ hôm nay đều bình thường",
+            "Bài học hôm nay bình thường không khó cũng không dễ",
+            "Hôm nay bài giảng vừa sức",
+            "Em thấy tiết học hôm nay cũng ổn",
+            "Tiết học diễn ra bình thường như mọi ngày",
+            "Hôm nay em ghi chép bài đầy đủ rồi",
+            "Tốc độ giảng dạy hôm nay bình thường",
+            "Tiết học hôm nay tàm tạm",
+            "Em không có ý kiến gì thêm về tiết học hôm nay",
             "Thầy giảng hay nhưng bài tập hơi nhiều và khó",
             "Tiết học vui nhưng cô nói nhanh em chưa kịp chép",
-            
+              
             # Tiêu cực (Negative)
             "Bài tập về nhà môn này quá nhiều làm em bị quá tải",
             "Thầy nói hơi nhanh em không theo kịp bài giảng",
