@@ -140,66 +140,61 @@ def vietnamese_preprocessing(text):
     return word_tokenize(text, format="text")
 
 # Huấn luyện mô hình phân tích cảm xúc
+# Huấn luyện mô hình phân tích cảm xúc
 @st.cache_resource
 def train_sentiment_model():
-    sample_dataset = {
-        "text": [
-            # Tích cực (Positive)
-            "Thầy giảng bài hôm nay rất hay và dễ hiểu",
-            "Tiết học thực hành rất hào hứng và thú vị",
-            "Em rất thích bài thuyết trình hôm nay",
-            "Không khí lớp học hôm nay rất tích cực",
-            "Em đã hiểu bài ngay tại lớp cảm ơn cô",
-            
-            # Trung tính (Neutral)
-            "Nội dung bài học bình thường không có gì đặc biệt",
-            "Hôm nay em thấy tiết học bình thường",
-            "Tiết học hôm nay bình thường",
-            "Em thấy buổi học hôm nay bình thường",
-            "Mọi thứ hôm nay đều bình thường",
-            "Bài học hôm nay bình thường không khó cũng không dễ",
-            "Hôm nay bài giảng vừa sức",
-            "Em thấy tiết học hôm nay cũng ổn",
-            "Tiết học diễn ra bình thường như mọi ngày",
-            "Hôm nay em ghi chép bài đầy đủ rồi",
-            "Tốc độ giảng dạy hôm nay bình thường",
-            "Tiết học hôm nay tàm tạm",
-            "Em không có ý kiến gì thêm về tiết học hôm nay",
-            "Thầy giảng hay nhưng bài tập hơi nhiều và khó",
-            "Tiết học vui nhưng cô nói nhanh em chưa kịp chép",
-              
-            # Tiêu cực (Negative)
-            "Bài tập về nhà môn này quá nhiều làm em bị quá tải",
-            "Thầy nói hơi nhanh em không theo kịp bài giảng",
-            "Em cảm thấy rất áp lực và mệt mỏi trong giờ học",
-            "Phòng máy tính chập chờn không kết nối được mạng",
-            "Kiến thức phần này quá khó hiểu và trừu tượng",
-            "Bài tập khó, chưa nhớ hết kiến thức",
-            "Thầy giảng quá nhanh, nói liên tục không ngừng để học sinh kịp ghi bài hay tiêu hóa kiến thức, cả lớp ngồi nghe như vịt nghe sấm.", 
-            "Cô dạy khó hiểu, nhảy bước giải bài tập liên tục mà không giải thích tại sao có công thức đó, em hỏi lại thì bị cô phê bình là không chú ý.", 
-            "Tiết học hôm nay cực kỳ buồn ngủ và khô khan, chỉ toàn đọc chép từ slide máy chiếu qua tập, không có bất kỳ ví dụ thực tế hay hoạt động tương tác nào.",
-            "Bài tập về nhà quá nhiều và vượt xa kiến thức đã dạy trên lớp, em thức đến 1h sáng vẫn chưa làm xong bài môn này.",
-            "Thầy nói nhỏ quá, các bạn ngồi từ giữa lớp trở xuống bàn cuối hoàn toàn không nghe rõ thầy đang nói gì.",
-            "Em cảm thấy rất áp lực và sợ hãi mỗi khi đến giờ môn này vì thầy cô thường xuyên gọi kiểm tra bài đầu giờ với thái độ gay gắt.",
-            "Cô thiên vị rõ ràng nhóm bạn học giỏi ở bàn đầu, nhóm chúng em giơ tay phát biểu nhiều lần nhưng cô hoàn toàn ngó lơ.",
-            "Lời nói mỉa mai của thầy hôm nay trước cả lớp khiến em cảm thấy rất tự ti và bị xúc phạm lòng tự trọng.",
-            "Lớp quá ồn ào và mất trật tự nhưng thầy cô không nhắc nhở nghiêm túc, làm những bạn muốn nghe giảng như em không thể tập trung học được."
-        ],
-        "sentiment": [
-            "positive", "positive", "positive", "positive", "positive",
-            "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
-            "negative", "negative", "negative", "negative", "negative", "negative",
-            "negative", "negative", "negative", "negative", "negative", "negative",
-            "negative", "negative", "negative"
-        ]
-    }
-    
-    pd.DataFrame(sample_dataset).to_csv(TRAIN_DATA_FILE, index=False, encoding="utf-8-sig")
+    # Định nghĩa trực tiếp theo từng cặp (text, sentiment) để đảm bảo 100% không bị lệch độ dài
+    training_data = [
+        # --- 1. TÍCH CỰC (POSITIVE) ---
+        ("Thầy giảng bài hôm nay rất hay và dễ hiểu", "positive"),
+        ("Tiết học thực hành rất hào hứng và thú vị", "positive"),
+        ("Em rất thích bài thuyết trình hôm nay", "positive"),
+        ("Không khí lớp học hôm nay rất tích cực", "positive"),
+        ("Em đã hiểu bài ngay tại lớp cảm ơn cô", "positive"),
+        ("Bài giảng sinh động, nhiều ví dụ hay", "positive"),
+        ("Em thích cách thầy tổ chức hoạt động nhóm", "positive"),
+        ("Hôm nay học vui và tiếp thu bài rất tốt", "positive"),
+        ("Cô giải thích rất chi tiết và tận tình", "positive"),
+        ("Tiết học bổ ích, giúp em hiểu rõ vấn đề", "positive"),
 
-    try:
-        df_train = pd.read_csv(TRAIN_DATA_FILE, encoding='utf-8-sig')
-    except Exception:
-        df_train = pd.read_csv(TRAIN_DATA_FILE, encoding='utf-8', errors='ignore')
+        # --- 2. TRUNG TÍNH (NEUTRAL) ---
+        ("Hôm nay em thấy tiết học bình thường", "neutral"),
+        ("Tiết học hôm nay bình thường", "neutral"),
+        ("Nội dung bài học bình thường không có gì đặc biệt", "neutral"),
+        ("Em thấy buổi học hôm nay bình thường", "neutral"),
+        ("Mọi thứ hôm nay đều bình thường", "neutral"),
+        ("Bài học hôm nay bình thường không khó cũng không dễ", "neutral"),
+        ("Hôm nay bài giảng vừa sức", "neutral"),
+        ("Em thấy tiết học hôm nay cũng ổn", "neutral"),
+        ("Tiết học diễn ra bình thường như mọi ngày", "neutral"),
+        ("Hôm nay em ghi chép bài đầy đủ rồi", "neutral"),
+        ("Tốc độ giảng dạy hôm nay bình thường", "neutral"),
+        ("Tiết học hôm nay tàm tạm", "neutral"),
+        ("Em không có ý kiến gì thêm về tiết học hôm nay", "neutral"),
+        ("Thầy giảng hay nhưng bài tập hơi nhiều và khó", "neutral"),
+        ("Tiết học vui nhưng cô nói nhanh em chưa kịp chép", "neutral"),
+
+        # --- 3. TIÊU CỰC / CẦN LƯU Ý (NEGATIVE) ---
+        ("Bài tập về nhà môn này quá nhiều làm em bị quá tải", "negative"),
+        ("Thầy nói hơi nhanh em không theo kịp bài giảng", "negative"),
+        ("Em cảm thấy rất áp lực và mệt mỏi trong giờ học", "negative"),
+        ("Phòng máy tính chập chờn không kết nối được mạng", "negative"),
+        ("Kiến thức phần này quá khó hiểu và trừu tượng", "negative"),
+        ("Bài tập khó, chưa nhớ hết kiến thức", "negative"),
+        ("Thầy giảng quá nhanh, nói liên tục không ngừng để học sinh kịp ghi bài hay tiêu hóa kiến thức, cả lớp ngồi nghe như vịt nghe sấm.", "negative"),
+        ("Cô dạy khó hiểu, nhảy bước giải bài tập liên tục mà không giải thích tại sao có công thức đó, em hỏi lại thì bị cô phê bình là không chú ý.", "negative"),
+        ("Tiết học hôm nay cực kỳ buồn ngủ và khô khan, chỉ toàn đọc chép từ slide máy chiếu qua tập, không có bất kỳ ví dụ thực tế hay hoạt động tương tác nào.", "negative"),
+        ("Bài tập về nhà quá nhiều và vượt xa kiến thức đã dạy trên lớp, em thức đến 1h sáng vẫn chưa làm xong bài môn này.", "negative"),
+        ("Thầy nói nhỏ quá, các bạn ngồi từ giữa lớp trở xuống bàn cuối hoàn toàn không nghe rõ thầy đang nói gì.", "negative"),
+        ("Em cảm thấy rất áp lực và sợ hãi mỗi khi đến giờ môn này vì thầy cô thường xuyên gọi kiểm tra bài đầu giờ với thái độ gay gắt.", "negative"),
+        ("Cô thiên vị rõ ràng nhóm bạn học giỏi ở bàn đầu, nhóm chúng em giơ tay phát biểu nhiều lần nhưng cô hoàn toàn ngó lơ.", "negative"),
+        ("Lời nói mỉa mai của thầy hôm nay trước cả lớp khiến em cảm thấy rất tự ti và bị xúc phạm lòng tự trọng.", "negative"),
+        ("Lớp quá ồn ào và mất trật tự nhưng thầy cô không nhắc nhở nghiêm túc, làm những bạn muốn nghe giảng như em không thể tập trung học được.", "negative")
+    ]
+    
+    # Tạo DataFrame trực tiếp từ danh sách cặp dữ liệu
+    df_train = pd.DataFrame(training_data, columns=["text", "sentiment"])
+    df_train.to_csv(TRAIN_DATA_FILE, index=False, encoding="utf-8-sig")
 
     df_train['clean_text'] = df_train['text'].apply(vietnamese_preprocessing)
     
