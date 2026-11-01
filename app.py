@@ -186,7 +186,6 @@ def train_sentiment_model():
         ]
     }
     
-    # Luôn ghi mới file dataset để cập nhật nhãn huấn luyện
     pd.DataFrame(sample_dataset).to_csv(TRAIN_DATA_FILE, index=False, encoding="utf-8-sig")
 
     try:
@@ -196,7 +195,7 @@ def train_sentiment_model():
 
     df_train['clean_text'] = df_train['text'].apply(vietnamese_preprocessing)
     
-    # Dùng CalibratedClassifierCV bọc LinearSVC để tính xác suất phân loại (predict_proba)
+    # Sử dụng CalibratedClassifierCV để lấy xác suất phân loại (predict_proba)
     base_svc = LinearSVC(random_state=42)
     calibrated_svc = CalibratedClassifierCV(estimator=base_svc)
 
@@ -250,7 +249,6 @@ if menu == "📝 Cổng Ý Kiến Ẩn Danh (Học Sinh)":
         )
         
         if st.button("🚀 Gửi Phản Hồi Ngay", use_container_width=True):
-            # Làm sạch dấu ngoặc kép hoặc ký tự bao quanh
             raw_feedback = feedback_text.strip().strip('"').strip("'").strip('”').strip('“')
             
             if not raw_feedback:
@@ -258,7 +256,6 @@ if menu == "📝 Cổng Ý Kiến Ẩn Danh (Học Sinh)":
             else:
                 clean_input = vietnamese_preprocessing(raw_feedback)
                 
-                # Dự đoán xác suất cho từng nhãn
                 probs = model.predict_proba([clean_input])[0]
                 classes = list(model.classes_)
                 prob_dict = dict(zip(classes, probs))
@@ -269,7 +266,7 @@ if menu == "📝 Cổng Ý Kiến Ẩn Danh (Học Sinh)":
                 
                 best_class = classes[np.argmax(probs)]
                 
-                # Kiểm tra phân vân: Khi tích cực và tiêu cực cạnh tranh sát nút (< 10%) và cả hai đều trội hơn trung tính
+                # Chỉ cảnh báo phân vân khi cả 2 sắc thái tích cực và tiêu cực sát nút (< 10%) và cùng vượt trội hơn trung tính
                 is_confused = (abs(pos_score - neg_score) < 0.10) and (pos_score > neu_score and neg_score > neu_score)
                 
                 if is_confused:
@@ -390,8 +387,8 @@ else:
             neu_pct = f"{(neu/total*100):.1f}%" if total else "0%"
             neg_pct = f"{(neg/total*100):.1f}%" if total else "0%"
             
-            # Thẻ số liệu tổng kết
-            st.markdown(f"""
+            # Khối thẻ số liệu thống kê tổng kết
+            metrics_html = f"""
                 <div class="metric-container">
                     <div class="card card-total">
                         <div class="card-label">TỔNG PHẢN HỒI</div>
@@ -400,3 +397,53 @@ else:
                     <div class="card card-pos">
                         <div class="card-label">TÍCH CỰC (POSITIVE)</div>
                         <div class="card-num" style="color: #10b981;">{pos} <span style="font-size:14px;">({pos_pct})</span></div>
+                    </div>
+                    <div class="card card-neu">
+                        <div class="card-label">TRUNG TÍNH (NEUTRAL)</div>
+                        <div class="card-num" style="color: #f59e0b;">{neu} <span style="font-size:14px;">({neu_pct})</span></div>
+                    </div>
+                    <div class="card card-neg">
+                        <div class="card-label">CẦN LƯU Ý (NEGATIVE)</div>
+                        <div class="card-num" style="color: #ef4444;">{neg} <span style="font-size:14px;">({neg_pct})</span></div>
+                    </div>
+                </div>
+            """
+            st.markdown(metrics_html, unsafe_allow_html=True)
+            
+            # Biểu đồ phân tích
+            chart_col1, chart_col2 = st.columns(2)
+            with chart_col1:
+                sentiment_map = {"positive": "Tích cực", "neutral": "Trung tính", "negative": "Cần lưu ý"}
+                df_chart = filtered_df["Sentiment"].map(sentiment_map).value_counts().reset_index()
+                df_chart.columns = ["Phân loại", "Số lượng"]
+                
+                fig_donut = px.pie(
+                    df_chart, names="Phân loại", values="Số lượng",
+                    title="Biểu đồ tỷ lệ phân bố cảm xúc",
+                    hole=0.45,
+                    color="Phân loại",
+                    color_discrete_map={"Tích cực": "#10B981", "Trung tính": "#F59E0B", "Cần lưu ý": "#EF4444"}
+                )
+                fig_donut.update_traces(textposition='inside', textinfo='percent+label')
+                st.plotly_chart(fig_donut, use_container_width=True)
+                
+            with chart_col2:
+                st.markdown("##### 🚨 Phản ánh học tập cần hỗ trợ kịp thời:")
+                if "Timestamp" in filtered_df.columns and "Feedback" in filtered_df.columns:
+                    negatives = filtered_df[filtered_df["Sentiment"] == "negative"][["Timestamp", "Class", "Subject", "Feedback"]]
+                    if len(negatives) > 0:
+                        st.dataframe(negatives, use_container_width=True, hide_index=True)
+                    else:
+                        st.success("Không có phản hồi tiêu cực nào trong phạm vi được chọn.")
+            
+            st.markdown("---")
+            st.markdown("##### 📋 Bảng dữ liệu toàn bộ ý kiến từ Google Sheets:")
+            st.dataframe(filtered_df, use_container_width=True, hide_index=True)
+            
+            export_csv = filtered_df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
+            st.download_button(
+                "📥 Tải Về Toàn Bộ Báo Cáo (.CSV/Excel)", 
+                data=export_csv, 
+                file_name=f"Bao_Cao_Cam_Xuc_{get_vietnam_now().replace(':', '').replace(' ', '_').replace('-', '')}.csv", 
+                mime="text/csv"
+            )
