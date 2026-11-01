@@ -142,51 +142,52 @@ def vietnamese_preprocessing(text):
 # Huấn luyện mô hình phân tích cảm xúc
 @st.cache_resource
 def train_sentiment_model():
-    if not os.path.exists(TRAIN_DATA_FILE):
-        sample_dataset = {
-            "text": [
-                # Tích cực (Positive)
-                "Thầy giảng bài hôm nay rất hay và dễ hiểu",
-                "Tiết học thực hành rất hào hứng và thú vị",
-                "Em rất thích bài thuyết trình hôm nay",
-                "Không khí lớp học hôm nay rất tích cực",
-                "Em đã hiểu bài ngay tại lớp cảm ơn cô",
-                
-                # Trung tính (Neutral)
-                "Nội dung bài học bình thường không có gì đặc biệt",
-                "Bài học hôm nay vừa sức",
-                "Em ghi chép bài đầy đủ rồi",
-                "Tốc độ giảng dạy bình thường",
-                "Tiết học diễn ra như mọi ngày",
-                "Thầy giảng hay nhưng bài tập hơi nhiều và khó",
-                "Tiết học vui nhưng cô nói nhanh em chưa kịp chép",
-                
-                # Tiêu cực (Negative)
-                "Bài tập về nhà môn này quá nhiều làm em bị quá tải",
-                "Thầy nói hơi nhanh em không theo kịp bài giảng",
-                "Em cảm thấy rất áp lực và mệt mỏi trong giờ học",
-                "Phòng máy tính chập chờn không kết nối được mạng",
-                "Kiến thức phần này quá khó hiểu và trừu tượng",
-                "Bài tập khó, chưa nhớ hết kiến thức",
-                "Thầy giảng quá nhanh, nói liên tục không ngừng để học sinh kịp ghi bài hay tiêu hóa kiến thức, cả lớp ngồi nghe như vịt nghe sấm.", 
-                "Cô dạy khó hiểu, nhảy bước giải bài tập liên tục mà không giải thích tại sao có công thức đó, em hỏi lại thì bị cô phê bình là không chú ý.", 
-                "Tiết học hôm nay cực kỳ buồn ngủ và khô khan, chỉ toàn đọc chép từ slide máy chiếu qua tập, không có bất kỳ ví dụ thực tế hay hoạt động tương tác nào.",
-                "Bài tập về nhà quá nhiều và vượt xa kiến thức đã dạy trên lớp, em thức đến 1h sáng vẫn chưa làm xong bài môn này.",
-                "Thầy nói nhỏ quá, các bạn ngồi từ giữa lớp trở xuống bàn cuối hoàn toàn không nghe rõ thầy đang nói gì.",
-                "Em cảm thấy rất áp lực và sợ hãi mỗi khi đến giờ môn này vì thầy cô thường xuyên gọi kiểm tra bài đầu giờ với thái độ gay gắt.",
-                "Cô thiên vị rõ ràng nhóm bạn học giỏi ở bàn đầu, nhóm chúng em giơ tay phát biểu nhiều lần nhưng cô hoàn toàn ngó lơ.",
-                "Lời nói mỉa mai của thầy hôm nay trước cả lớp khiến em cảm thấy rất tự ti và bị xúc phạm lòng tự trọng.",
-                "Lớp quá ồn ào và mất trật tự nhưng thầy cô không nhắc nhở nghiêm túc, làm những bạn muốn nghe giảng như em không thể tập trung học được."
-            ],
-            "sentiment": [
-                "positive", "positive", "positive", "positive", "positive",
-                "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
-                "negative", "negative", "negative", "negative", "negative", "negative",
-                "negative", "negative", "negative", "negative", "negative", "negative",
-                "negative", "negative", "negative"
-            ]
-        }
-        pd.DataFrame(sample_dataset).to_csv(TRAIN_DATA_FILE, index=False, encoding="utf-8-sig")
+    sample_dataset = {
+        "text": [
+            # Tích cực (Positive)
+            "Thầy giảng bài hôm nay rất hay và dễ hiểu",
+            "Tiết học thực hành rất hào hứng và thú vị",
+            "Em rất thích bài thuyết trình hôm nay",
+            "Không khí lớp học hôm nay rất tích cực",
+            "Em đã hiểu bài ngay tại lớp cảm ơn cô",
+            
+            # Trung tính (Neutral)
+            "Nội dung bài học bình thường không có gì đặc biệt",
+            "Bài học hôm nay vừa sức",
+            "Em ghi chép bài đầy đủ rồi",
+            "Tốc độ giảng dạy bình thường",
+            "Tiết học diễn ra như mọi ngày",
+            "Thầy giảng hay nhưng bài tập hơi nhiều và khó",
+            "Tiết học vui nhưng cô nói nhanh em chưa kịp chép",
+            
+            # Tiêu cực (Negative)
+            "Bài tập về nhà môn này quá nhiều làm em bị quá tải",
+            "Thầy nói hơi nhanh em không theo kịp bài giảng",
+            "Em cảm thấy rất áp lực và mệt mỏi trong giờ học",
+            "Phòng máy tính chập chờn không kết nối được mạng",
+            "Kiến thức phần này quá khó hiểu và trừu tượng",
+            "Bài tập khó, chưa nhớ hết kiến thức",
+            "Thầy giảng quá nhanh, nói liên tục không ngừng để học sinh kịp ghi bài hay tiêu hóa kiến thức, cả lớp ngồi nghe như vịt nghe sấm.", 
+            "Cô dạy khó hiểu, nhảy bước giải bài tập liên tục mà không giải thích tại sao có công thức đó, em hỏi lại thì bị cô phê bình là không chú ý.", 
+            "Tiết học hôm nay cực kỳ buồn ngủ và khô khan, chỉ toàn đọc chép từ slide máy chiếu qua tập, không có bất kỳ ví dụ thực tế hay hoạt động tương tác nào.",
+            "Bài tập về nhà quá nhiều và vượt xa kiến thức đã dạy trên lớp, em thức đến 1h sáng vẫn chưa làm xong bài môn này.",
+            "Thầy nói nhỏ quá, các bạn ngồi từ giữa lớp trở xuống bàn cuối hoàn toàn không nghe rõ thầy đang nói gì.",
+            "Em cảm thấy rất áp lực và sợ hãi mỗi khi đến giờ môn này vì thầy cô thường xuyên gọi kiểm tra bài đầu giờ với thái độ gay gắt.",
+            "Cô thiên vị rõ ràng nhóm bạn học giỏi ở bàn đầu, nhóm chúng em giơ tay phát biểu nhiều lần nhưng cô hoàn toàn ngó lơ.",
+            "Lời nói mỉa mai của thầy hôm nay trước cả lớp khiến em cảm thấy rất tự ti và bị xúc phạm lòng tự trọng.",
+            "Lớp quá ồn ào và mất trật tự nhưng thầy cô không nhắc nhở nghiêm túc, làm những bạn muốn nghe giảng như em không thể tập trung học được."
+        ],
+        "sentiment": [
+            "positive", "positive", "positive", "positive", "positive",
+            "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
+            "negative", "negative", "negative", "negative", "negative", "negative",
+            "negative", "negative", "negative", "negative", "negative", "negative",
+            "negative", "negative", "negative"
+        ]
+    }
+    
+    # Luôn ghi mới file dataset để cập nhật nhãn huấn luyện
+    pd.DataFrame(sample_dataset).to_csv(TRAIN_DATA_FILE, index=False, encoding="utf-8-sig")
 
     try:
         df_train = pd.read_csv(TRAIN_DATA_FILE, encoding='utf-8-sig')
@@ -195,7 +196,7 @@ def train_sentiment_model():
 
     df_train['clean_text'] = df_train['text'].apply(vietnamese_preprocessing)
     
-    # Sử dụng CalibratedClassifierCV để LinearSVC hỗ trợ hàm predict_proba
+    # Dùng CalibratedClassifierCV bọc LinearSVC để tính xác suất phân loại (predict_proba)
     base_svc = LinearSVC(random_state=42)
     calibrated_svc = CalibratedClassifierCV(estimator=base_svc)
 
@@ -249,38 +250,43 @@ if menu == "📝 Cổng Ý Kiến Ẩn Danh (Học Sinh)":
         )
         
         if st.button("🚀 Gửi Phản Hồi Ngay", use_container_width=True):
-            if not feedback_text.strip():
+            # Làm sạch dấu ngoặc kép hoặc ký tự bao quanh
+            raw_feedback = feedback_text.strip().strip('"').strip("'").strip('”').strip('“')
+            
+            if not raw_feedback:
                 st.warning("Vui lòng viết vài dòng cảm nhận trước khi gửi nhé!")
             else:
-                clean_input = vietnamese_preprocessing(feedback_text)
+                clean_input = vietnamese_preprocessing(raw_feedback)
                 
-                # Tính xác suất phân loại các nhãn
+                # Dự đoán xác suất cho từng nhãn
                 probs = model.predict_proba([clean_input])[0]
                 classes = list(model.classes_)
                 prob_dict = dict(zip(classes, probs))
                 
                 pos_score = prob_dict.get("positive", 0.0)
                 neg_score = prob_dict.get("negative", 0.0)
-                max_score = np.max(probs)
+                neu_score = prob_dict.get("neutral", 0.0)
                 
-                # Kiểm tra điều kiện phân vân (chênh lệch giữa tích cực và tiêu cực quá nhỏ hoặc độ tin cậy thấp)
-                is_confused = abs(pos_score - neg_score) < 0.15 or max_score < 0.45
+                best_class = classes[np.argmax(probs)]
+                
+                # Kiểm tra phân vân: Khi tích cực và tiêu cực cạnh tranh sát nút (< 10%) và cả hai đều trội hơn trung tính
+                is_confused = (abs(pos_score - neg_score) < 0.10) and (pos_score > neu_score and neg_score > neu_score)
                 
                 if is_confused:
                     st.warning(
                         "⚠️ **Hệ thống chưa thể xác định rõ ý kiến của bạn** "
-                        "(phản hồi có thể đang chứa cả yếu tố tích cực lẫn tiêu cực đan xen). "
-                        "**Bạn vui lòng nhập lại thông tin** chi tiết hơn hoặc tách rõ từng ý kiến để thầy cô dễ dàng lắng nghe và hỗ trợ nhé!"
+                        "(phản hồi có thể đang chứa cả yếu tố khen và chê đan xen). "
+                        "**Bạn vui lòng nhập lại thông tin** chi tiết hoặc tách rõ từng ý kiến để thầy cô hỗ trợ tốt hơn nhé!"
                     )
                 else:
-                    prediction = classes[np.argmax(probs)]
+                    prediction = best_class
                     with st.spinner("Đang lưu phản hồi lên Google Sheets..."):
                         row_data = [
                             get_vietnam_now(),
                             selected_grade,
                             selected_class,
                             selected_subject,
-                            feedback_text.strip(),
+                            raw_feedback,
                             prediction
                         ]
                         
@@ -351,7 +357,7 @@ else:
             if "Grade" not in df.columns:
                 df["Grade"] = df["Class"].apply(lambda x: f"Khối {str(x)[:2]}" if str(x)[:2].isdigit() else "Khối 10")
                 
-            # Thanh bộ lọc thông minh
+            # Bộ lọc thông minh
             st.markdown("#### 🔍 Bộ lọc thông minh:")
             f_col1, f_col2, f_col3 = st.columns(3)
             with f_col1:
@@ -394,52 +400,3 @@ else:
                     <div class="card card-pos">
                         <div class="card-label">TÍCH CỰC (POSITIVE)</div>
                         <div class="card-num" style="color: #10b981;">{pos} <span style="font-size:14px;">({pos_pct})</span></div>
-                    </div>
-                    <div class="card card-neu">
-                        <div class="card-label">TRUNG TÍNH (NEUTRAL)</div>
-                        <div class="card-num" style="color: #f59e0b;">{neu} <span style="font-size:14px;">({neu_pct})</span></div>
-                    </div>
-                    <div class="card card-neg">
-                        <div class="card-label">CẦN LƯU Ý (NEGATIVE)</div>
-                        <div class="card-num" style="color: #ef4444;">{neg} <span style="font-size:14px;">({neg_pct})</span></div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Biểu đồ phân tích
-            chart_col1, chart_col2 = st.columns(2)
-            with chart_col1:
-                sentiment_map = {"positive": "Tích cực", "neutral": "Trung tính", "negative": "Cần lưu ý"}
-                df_chart = filtered_df["Sentiment"].map(sentiment_map).value_counts().reset_index()
-                df_chart.columns = ["Phân loại", "Số lượng"]
-                
-                fig_donut = px.pie(
-                    df_chart, names="Phân loại", values="Số lượng",
-                    title="Biểu đồ tỷ lệ phân bố cảm xúc",
-                    hole=0.45,
-                    color="Phân loại",
-                    color_discrete_map={"Tích cực": "#10B981", "Trung tính": "#F59E0B", "Cần lưu ý": "#EF4444"}
-                )
-                fig_donut.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig_donut, use_container_width=True)
-                
-            with chart_col2:
-                st.markdown("##### 🚨 Phản ánh học tập cần hỗ trợ kịp thời:")
-                if "Timestamp" in filtered_df.columns and "Feedback" in filtered_df.columns:
-                    negatives = filtered_df[filtered_df["Sentiment"] == "negative"][["Timestamp", "Class", "Subject", "Feedback"]]
-                    if len(negatives) > 0:
-                        st.dataframe(negatives, use_container_width=True, hide_index=True)
-                    else:
-                        st.success("Không có phản hồi tiêu cực nào trong phạm vi được chọn.")
-            
-            st.markdown("---")
-            st.markdown("##### 📋 Bảng dữ liệu toàn bộ ý kiến từ Google Sheets:")
-            st.dataframe(filtered_df, use_container_width=True, hide_index=True)
-            
-            export_csv = filtered_df.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
-            st.download_button(
-                "📥 Tải Về Toàn Bộ Báo Cáo (.CSV/Excel)", 
-                data=export_csv, 
-                file_name=f"Bao_Cao_Cam_Xuc_{get_vietnam_now().replace(':', '').replace(' ', '_').replace('-', '')}.csv", 
-                mime="text/csv"
-            )
