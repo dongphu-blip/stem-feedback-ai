@@ -175,6 +175,12 @@ def train_sentiment_model():
         ("Tiết học vui nhưng cô nói nhanh em chưa kịp chép", "neutral"),
 
         # --- 3. TIÊU CỰC / CẦN LƯU Ý (NEGATIVE) ---
+        ("Cô hay bắt bọn em chép phạt", "negative"),
+        ("Thầy cô hay phạt chép bài nhiều lần quá mức", "negative"),
+        ("Thầy cô hay la mắng và phạt học sinh trước lớp", "negative"),
+        ("Bị phạt đứng cuối lớp và chép phạt mỏi tay", "negative"),
+        ("Giáo viên gắt gỏng, khó tính và hay phạt nặng", "negative"),
+        ("Cô bắt phạt vô lý làm chúng em rất ấm ức", "negative"),
         ("Bài tập về nhà môn này quá nhiều làm em bị quá tải", "negative"),
         ("Thầy nói hơi nhanh em không theo kịp bài giảng", "negative"),
         ("Em cảm thấy rất áp lực và mệt mỏi trong giờ học", "negative"),
