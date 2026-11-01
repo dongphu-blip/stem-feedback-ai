@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import os
 import requests
 import json
@@ -7,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 from underthesea import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.pipeline import Pipeline
 import plotly.express as px
 import plotly.graph_objects as go
@@ -143,27 +145,45 @@ def train_sentiment_model():
     if not os.path.exists(TRAIN_DATA_FILE):
         sample_dataset = {
             "text": [
+                # Tích cực (Positive)
                 "Thầy giảng bài hôm nay rất hay và dễ hiểu",
                 "Tiết học thực hành rất hào hứng và thú vị",
                 "Em rất thích bài thuyết trình hôm nay",
                 "Không khí lớp học hôm nay rất tích cực",
                 "Em đã hiểu bài ngay tại lớp cảm ơn cô",
+                
+                # Trung tính (Neutral)
                 "Nội dung bài học bình thường không có gì đặc biệt",
                 "Bài học hôm nay vừa sức",
                 "Em ghi chép bài đầy đủ rồi",
                 "Tốc độ giảng dạy bình thường",
                 "Tiết học diễn ra như mọi ngày",
+                "Thầy giảng hay nhưng bài tập hơi nhiều và khó",
+                "Tiết học vui nhưng cô nói nhanh em chưa kịp chép",
+                
+                # Tiêu cực (Negative)
                 "Bài tập về nhà môn này quá nhiều làm em bị quá tải",
                 "Thầy nói hơi nhanh em không theo kịp bài giảng",
                 "Em cảm thấy rất áp lực và mệt mỏi trong giờ học",
                 "Phòng máy tính chập chờn không kết nối được mạng",
                 "Kiến thức phần này quá khó hiểu và trừu tượng",
-                "Bài tập khó, chưa nhớ hết kiến thức"
+                "Bài tập khó, chưa nhớ hết kiến thức",
+                "Thầy giảng quá nhanh, nói liên tục không ngừng để học sinh kịp ghi bài hay tiêu hóa kiến thức, cả lớp ngồi nghe như vịt nghe sấm.", 
+                "Cô dạy khó hiểu, nhảy bước giải bài tập liên tục mà không giải thích tại sao có công thức đó, em hỏi lại thì bị cô phê bình là không chú ý.", 
+                "Tiết học hôm nay cực kỳ buồn ngủ và khô khan, chỉ toàn đọc chép từ slide máy chiếu qua tập, không có bất kỳ ví dụ thực tế hay hoạt động tương tác nào.",
+                "Bài tập về nhà quá nhiều và vượt xa kiến thức đã dạy trên lớp, em thức đến 1h sáng vẫn chưa làm xong bài môn này.",
+                "Thầy nói nhỏ quá, các bạn ngồi từ giữa lớp trở xuống bàn cuối hoàn toàn không nghe rõ thầy đang nói gì.",
+                "Em cảm thấy rất áp lực và sợ hãi mỗi khi đến giờ môn này vì thầy cô thường xuyên gọi kiểm tra bài đầu giờ với thái độ gay gắt.",
+                "Cô thiên vị rõ ràng nhóm bạn học giỏi ở bàn đầu, nhóm chúng em giơ tay phát biểu nhiều lần nhưng cô hoàn toàn ngó lơ.",
+                "Lời nói mỉa mai của thầy hôm nay trước cả lớp khiến em cảm thấy rất tự ti và bị xúc phạm lòng tự trọng.",
+                "Lớp quá ồn ào và mất trật tự nhưng thầy cô không nhắc nhở nghiêm túc, làm những bạn muốn nghe giảng như em không thể tập trung học được."
             ],
             "sentiment": [
                 "positive", "positive", "positive", "positive", "positive",
-                "neutral", "neutral", "neutral", "neutral", "neutral",
-                "negative", "negative", "negative", "negative", "negative", "negative"
+                "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
+                "negative", "negative", "negative", "negative", "negative", "negative",
+                "negative", "negative", "negative", "negative", "negative", "negative",
+                "negative", "negative", "negative"
             ]
         }
         pd.DataFrame(sample_dataset).to_csv(TRAIN_DATA_FILE, index=False, encoding="utf-8-sig")
@@ -175,9 +195,13 @@ def train_sentiment_model():
 
     df_train['clean_text'] = df_train['text'].apply(vietnamese_preprocessing)
     
+    # Sử dụng CalibratedClassifierCV để LinearSVC hỗ trợ hàm predict_proba
+    base_svc = LinearSVC(random_state=42)
+    calibrated_svc = CalibratedClassifierCV(estimator=base_svc)
+
     model_pipeline = Pipeline([
         ('tfidf', TfidfVectorizer(ngram_range=(1, 2))),
-        ('classifier', LinearSVC(random_state=42))
+        ('classifier', calibrated_svc)
     ])
     model_pipeline.fit(df_train['clean_text'], df_train['sentiment'])
     return model_pipeline
@@ -228,38 +252,57 @@ if menu == "📝 Cổng Ý Kiến Ẩn Danh (Học Sinh)":
             if not feedback_text.strip():
                 st.warning("Vui lòng viết vài dòng cảm nhận trước khi gửi nhé!")
             else:
-                with st.spinner("Đang lưu phản hồi lên Google Sheets..."):
-                    clean_input = vietnamese_preprocessing(feedback_text)
-                    prediction = model.predict([clean_input])[0]
-                    
-                    row_data = [
-                        get_vietnam_now(),
-                        selected_grade,
-                        selected_class,
-                        selected_subject,
-                        feedback_text.strip(),
-                        prediction
-                    ]
-                    
-                    try:
-                        payload = json.dumps({"sheet_name": "Feedback", "row_data": row_data})
-                        res = requests.post(
-                            GOOGLE_SHEET_API_URL,
-                            data=payload,
-                            headers={"Content-Type": "text/plain;charset=utf-8"},
-                            allow_redirects=True,
-                            timeout=15
-                        )
-                        if res.status_code in [200, 302] or "success" in res.text:
-                            st.success("✅ Phản hồi của bạn đã được ghi nhận trên Google Sheets! Cảm ơn bạn đã đóng góp xây dựng tiết học.")
+                clean_input = vietnamese_preprocessing(feedback_text)
+                
+                # Tính xác suất phân loại các nhãn
+                probs = model.predict_proba([clean_input])[0]
+                classes = list(model.classes_)
+                prob_dict = dict(zip(classes, probs))
+                
+                pos_score = prob_dict.get("positive", 0.0)
+                neg_score = prob_dict.get("negative", 0.0)
+                max_score = np.max(probs)
+                
+                # Kiểm tra điều kiện phân vân (chênh lệch giữa tích cực và tiêu cực quá nhỏ hoặc độ tin cậy thấp)
+                is_confused = abs(pos_score - neg_score) < 0.15 or max_score < 0.45
+                
+                if is_confused:
+                    st.warning(
+                        "⚠️ **Hệ thống chưa thể xác định rõ ý kiến của bạn** "
+                        "(phản hồi có thể đang chứa cả yếu tố tích cực lẫn tiêu cực đan xen). "
+                        "**Bạn vui lòng nhập lại thông tin** chi tiết hơn hoặc tách rõ từng ý kiến để thầy cô dễ dàng lắng nghe và hỗ trợ nhé!"
+                    )
+                else:
+                    prediction = classes[np.argmax(probs)]
+                    with st.spinner("Đang lưu phản hồi lên Google Sheets..."):
+                        row_data = [
+                            get_vietnam_now(),
+                            selected_grade,
+                            selected_class,
+                            selected_subject,
+                            feedback_text.strip(),
+                            prediction
+                        ]
+                        
+                        try:
+                            payload = json.dumps({"sheet_name": "Feedback", "row_data": row_data})
+                            res = requests.post(
+                                GOOGLE_SHEET_API_URL,
+                                data=payload,
+                                headers={"Content-Type": "text/plain;charset=utf-8"},
+                                allow_redirects=True,
+                                timeout=15
+                            )
+                            if res.status_code in [200, 302] or "success" in res.text:
+                                st.success("✅ Phản hồi của bạn đã được ghi nhận trên Google Sheets! Cảm ơn bạn đã đóng góp xây dựng tiết học.")
+                                st.balloons()
+                            else:
+                                st.error(f"Lỗi gửi dữ liệu lên Google Sheets (Mã: {res.status_code}).")
+                        except requests.exceptions.Timeout:
+                            st.success("✅ Phản hồi đã được chuyển lên hệ thống Google Sheets thành công!")
                             st.balloons()
-                        else:
-                            st.error(f"Lỗi gửi dữ liệu lên Google Sheets (Mã: {res.status_code}).")
-                    except requests.exceptions.Timeout:
-                        st.success("✅ Phản hồi đã được chuyển lên hệ thống Google Sheets thành công!")
-                        st.balloons()
-                    except Exception as e:
-                        st.error(f"Lỗi kết nối: {e}")
+                        except Exception as e:
+                            st.error(f"Lỗi kết nối: {e}")
 
     with col_right:
         st.markdown("<br>", unsafe_allow_html=True)
@@ -301,7 +344,6 @@ else:
         except Exception:
             df = pd.DataFrame()
 
-        # Kiểm tra an toàn: Nếu bảng chưa có dữ liệu hoặc thiếu các cột quan trọng
         required_cols = ["Class", "Sentiment", "Subject"]
         if df.empty or not all(col in df.columns for col in required_cols):
             st.info("📌 Hệ thống chưa ghi nhận phản hồi nào hoặc bảng tính `Feedback` đang trống. Hãy quay lại Cổng học sinh để gửi phản hồi đầu tiên nhé!")
